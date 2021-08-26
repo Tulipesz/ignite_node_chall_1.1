@@ -16,11 +16,24 @@ function checksExistsUserAccount(request, response, next) {
   const user = users.find(user => user.username === username);
 
   if(!user) {
-    return response.status(400).json({ error: "Username not found!" })
+    return response.status(404).json({ error: "Username not found!" })
   }
 
   request.user = user;
 
+  return next();
+}
+
+function checkExistsTodoInAccount(request, response, next){
+  const { user } = request;
+  const { id } = request.params;
+  
+  const todoExists = user.todos.some(todo=> todo.id === id);
+
+  if(!todoExists){
+    return response.status(404).json({ error: "Todo not found!" });
+  }
+  
   return next();
 }
 
@@ -41,7 +54,7 @@ app.post('/users', (request, response) => {
   };
 
   users.push(user);
-  return response.json(user);
+  return response.status(201).json(user);
 });
 
 app.get('/todos', checksExistsUserAccount, (request, response) => {
@@ -64,10 +77,10 @@ app.post('/todos', checksExistsUserAccount, (request, response) => {
 
   user.todos.push(todo);
 
-  return response.json(todo);
+  return response.status(201).json(todo);
 });
 
-app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
+app.put('/todos/:id', checksExistsUserAccount, checkExistsTodoInAccount, (request, response) => {
   const { user } = request;
   const { title, deadline } = request.body;
   const { id } = request.params;
@@ -80,7 +93,7 @@ app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
   return response.json(todo);
 });
 
-app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
+app.patch('/todos/:id/done', checksExistsUserAccount, checkExistsTodoInAccount, (request, response) => {
   const { user } = request;
   const { id } = request.params;
 
@@ -91,8 +104,15 @@ app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
   return response.json(todo);
 });
 
-app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+app.delete('/todos/:id', checksExistsUserAccount, checkExistsTodoInAccount, (request, response) => {
+  const { user } = request;
+  const { id } = request.params;
+
+  const todo = user.todos.find(todo => todo.id === id);
+
+  user.todos.splice(user.todos.indexOf(todo), 1);
+
+  return response.status(204).json();
 });
 
 module.exports = app;
